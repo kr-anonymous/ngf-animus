@@ -7,9 +7,11 @@
 
 # Creation of Benign and Backdoor models
 For creating a Benign model-  
+	
 	python benign_model.py --output-dir defined/save/folder/ 
 
 For Creating a backdoor model-
+	
 	python backdoor_model.py blend --poison-rate 0.10 --output-dir defined/save/folder/ 
 
 
