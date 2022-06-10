@@ -16,4 +16,4 @@ For Creating a backdoor model using blend attack with a poison ratio of 10%-
 
 
 # Purifying a Model
-	python Purification_NGF.py --poison-type blend --saved_models defined/save/folder/
+	python Purification_NGF.py --poison-type blend --checkpoint defined/save/folder/
