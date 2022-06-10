@@ -23,7 +23,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from PIL import Image
 import dataset.badnet_loader_cifar as poison
-from dataset.dataloader_cifar import *
+from dataloader_cifar import *
 import random 
 
 ## Parser Args
@@ -72,52 +72,8 @@ args = parser.parse_args()
 args_dict = vars(args)
 random.seed(123)
 os.makedirs(args.output_dir, exist_ok=True)
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-torch.cuda.set_device(0)
-
-
-## Setup Different Optimizer 
-optim_name = args.optimizer.lower()
-tag = optim_name
-if optim_name == 'sgd':
-    optimizer = optim.SGD(params_finetune,
-                          lr=args.learning_rate,
-                          momentum=args.momentum,
-                          weight_decay=args.weight_decay)
-
-elif optim_name == 'adam':
-    optimizer = optim.Adam(params_finetune,
-                          lr=args.learning_rate,
-                          weight_decay=args.weight_decay)  
-
-elif optim_name == 'adagrad':
-    optimizer = optim.Adagrad(params_finetune,
-                          lr=args.learning_rate,
-                          weight_decay=args.weight_decay)  
-
-elif optim_name == 'adagmax':
-    optimizer = optim.Adagrad(params_finetune,
-                          lr=args.learning_rate,
-                          weight_decay=args.weight_decay)  
-
-elif optim_name == 'rmsprop':
-    optimizer = optim.RMSprop(params_finetune,
-                          lr=args.learning_rate,
-                          momentum=args.momentum,
-                          weight_decay=args.weight_decay)  
-elif optim_name == 'ngf':
-    optimizer = NGF_Optimizer(net,
-                               lr=args.learning_rate,
-                               momentum=args.momentum,
-                               stat_decay=args.stat_decay,
-                               damping=args.damping,
-                               kl_clip=args.kl_clip,
-                               weight_decay=args.weight_decay,
-                               TCov=args.TCov,
-                               TScal=args.TScal,
-                               TInv=args.TInv)
-else:
-    raise NotImplementedError
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.cuda.set_device(args.gpuid)
 
 
 ## Linear Transformation
@@ -186,12 +142,12 @@ elif args.backdoor_type in ['SIG', 'TrojanNet', 'CLB']:
 elif args.backdoor_type == 'benign':
       poison_test_loader  = DataLoader(clean_test, batch_size=args.batch_size, num_workers=4)
       clean_test_loader   = DataLoader(clean_test, batch_size=args.batch_size, num_workers=4)
-    trigger_info = None
+      trigger_info = None
 
 ## Get the dataloader for finetuning 
 orig_train        = CIFAR10(root=args.data_dir, train=True, download=True, transform=transform_train)
 _, clean_val_none = poison.split_dataset(dataset=orig_train, val_frac=args.val_frac,
-                                    perm=np.loadtxt('./data/cifar_shuffle.txt', dtype=int))
+                                    perm=np.loadtxt('./dataset/cifar_shuffle.txt', dtype=int))
 clean_val = clean_val_none                                                                                                   ## Removal using Clean val data
 random_sampler    = RandomSampler(data_source=clean_val, replacement=True,
                                num_samples =args.repeat_epochs * args.batch_size)
@@ -215,6 +171,50 @@ net = net.cuda()
 ## Select which parameters to finetune (Determine from the architecture)
 params_finetune = [param for name, param in net.named_parameters()]   
 
+
+## Setup Different Optimizer 
+optim_name = args.optimizer.lower()
+tag = optim_name
+if optim_name == 'sgd':
+    optimizer = optim.SGD(params_finetune,
+                          lr=args.learning_rate,
+                          momentum=args.momentum,
+                          weight_decay=args.weight_decay)
+
+elif optim_name == 'adam':
+    optimizer = optim.Adam(params_finetune,
+                          lr=args.learning_rate,
+                          weight_decay=args.weight_decay)  
+
+elif optim_name == 'adagrad':
+    optimizer = optim.Adagrad(params_finetune,
+                          lr=args.learning_rate,
+                          weight_decay=args.weight_decay)  
+
+elif optim_name == 'adagmax':
+    optimizer = optim.Adagrad(params_finetune,
+                          lr=args.learning_rate,
+                          weight_decay=args.weight_decay)  
+
+elif optim_name == 'rmsprop':
+    optimizer = optim.RMSprop(params_finetune,
+                          lr=args.learning_rate,
+                          momentum=args.momentum,
+                          weight_decay=args.weight_decay)  
+elif optim_name == 'ngf':
+    optimizer = NGF_Optimizer(net,
+                               lr=args.learning_rate,
+                               momentum=args.momentum,
+                               stat_decay=args.stat_decay,
+                               damping=args.damping,
+                               kl_clip=args.kl_clip,
+                               weight_decay=args.weight_decay,
+                               TCov=args.TCov,
+                               TScal=args.TScal,
+                               TInv=args.TInv)
+else:
+    raise NotImplementedError
+
 ## Init summary writter
 log_dir = os.path.join(args.log_dir, args.dataset, args.arch, args.optimizer,
                        'lr%.3f_wd%.4f_damping%.4f' %
@@ -230,8 +230,6 @@ else:
     milestone    = [int(_) for _ in args.milestone.split(',')]
     lr_scheduler = MultiStepLR(optimizer, milestones=milestone, gamma=0.1)
 
-
-
 def main():
   ## Validate the model 
   cl_test_loss, cl_test_acc = test(model=net, criterion=criterion, data_loader=clean_test_loader)
@@ -242,7 +240,6 @@ def main():
       print("Attack Success Rate of the Given Model:", po_test_acc)
 
   ## Step 3: Finetune backdoored Models
-  print('Iter \t lr \t Time \t TrainLoss \t TrainACC \t PoisonLoss \t ASR (After Purification) \t CleanLoss \t CA (After Purification)')
   for i in range(nb_repeat):
     start = time.time()
     lr = optimizer.param_groups[0]['lr']
@@ -254,10 +251,8 @@ def main():
     
     end = time.time()
     
-    # print(cl_test_acc)
-    print('{} \t {:.3f} \t {:.1f} \t {:.4f} \t {:.4f} \t {:.4f} \t {:.4f} \t {:.4f} \t {:.4f}'.format(
-        (i + 1) * args.repeat_epochs, lr, end - start, train_loss, train_acc, po_test_loss, po_test_acc,
-        cl_test_loss, cl_test_acc))
+    print("Attack Sucess Rate (After Purification):", po_test_acc)
+    print("Clean Test Accuracy (After Purification):", cl_test_acc)
 
 
 ## Training Scheme

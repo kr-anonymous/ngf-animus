@@ -3,8 +3,8 @@ import math
 import torch
 import torch.optim as optim
 
-from utils.kfac_utils import (ComputeCovA, ComputeCovG, ComputeMatGrad)
-from utils.kfac_utils import update_running_stat
+from utils.ngf_utils import (ComputeCovA, ComputeCovG, ComputeMatGrad)
+from utils.ngf_utils import update_running_stat
 
 
 class NGF_Optimizer(optim.Optimizer):
@@ -31,7 +31,7 @@ class NGF_Optimizer(optim.Optimizer):
                         weight_decay=weight_decay)
 
         # TODO (CW): EKFAC optimizer now only support model as input
-        super(EKFACOptimizer, self).__init__(model.parameters(), defaults)
+        super(NGF_Optimizer, self).__init__(model.parameters(), defaults)
         self.CovAHandler = ComputeCovA()
         self.CovGHandler = ComputeCovG()
         self.MatGradHandler = ComputeMatGrad()
@@ -40,6 +40,7 @@ class NGF_Optimizer(optim.Optimizer):
         self.known_modules = {'Linear', 'Conv2d'}
         self.modules = []
         self.grad_outputs = {}
+        self.acc_stats = True
 
         self.model = model
         self._prepare_model()
@@ -87,7 +88,8 @@ class NGF_Optimizer(optim.Optimizer):
         count = 0
         module_count = 0 
         module_start = 66                      ## Set how many layers you want to optimize (48 works, use 66 for linear layer)
-        print("=> We keep following layers::::")
+        print("=> We Only Fine-Tune Following Layers::::")
+        print("-------------------------------------------------------")
         for module in self.model.modules():
             classname = module.__class__.__name__
             # print(classname)

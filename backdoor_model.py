@@ -7,14 +7,11 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
-from data_loader import * 
-from config import get_arguments
+from dataloader_cifar import * 
 import models
-import data.poison_cifar as poison
-from autoaugment import CIFAR10Policy, ImageNetPolicy
+import dataset.badnet_loader_cifar as poison
 from PIL import Image
-from data_loader import *
-
+import random
 
 parser = argparse.ArgumentParser(description='Train poisoned networks')
 
@@ -26,7 +23,7 @@ parser.add_argument('--batch-size', type=int, default=128, help='the batch size 
 parser.add_argument('--epoch',      type = int, default = 250, help='the numbe of epoch for training')
 parser.add_argument('--schedule',   type=int, nargs='+', default=[100, 150], help='Decrease learning rate at these epochs.')
 parser.add_argument('--save-every', type=int, default=20, help='save checkpoints every few epochs')
-parser.add_argument('--data-dir',   type=str, default='../data', help='dir to the dataset')
+parser.add_argument('--data-dir',   type=str, default='../dataset', help='dir to the dataset')
 parser.add_argument('--output-dir', type=str, default='logs/models/')
 
 ## Backdoor Parameters
@@ -36,8 +33,7 @@ parser.add_argument('--poison-type', type=str, default='badnets', choices=['badn
 parser.add_argument('--poison-rate', type=float, default=0.10, help='proportion of poison examples in the training set')
 parser.add_argument('--poison-target', type=int, default=0, help='target class of backdoor attack')
 parser.add_argument('--trigger-alpha', type=float, default=0.2, help='the transparency of the trigger pattern.')
-parser.add_argument('--gpuid', type=int, default=2, help='the transparency of the trigger pattern.')
-
+parser.add_argument('--gpuid', type=int, default=3, help='Which GPU device you want to put the model')
 parser.add_argument('--log_root', type=str, default='./logs', help='logs are saved here')
 parser.add_argument('--dataset', type=str, default='CIFAR10', help='name of image dataset')
 parser.add_argument('--load_fixed_data', type=int, default=0, help='load the local poisoned dataest')
@@ -48,7 +44,6 @@ parser.add_argument('--lr', type=float, default=0.1, help='initial learning rate
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=1e-4, help='weight decay')
 parser.add_argument('--num_class', type=int, default=10, help='number of classes')
-parser.add_argument('--isolation_ratio', type=float, default=0.01, help='ratio of isolation data')
 
 ## Others
 parser.add_argument('--seed', type=int, default=123, help='random seed')
@@ -100,7 +95,7 @@ def main():
     ## Step 1: Create poisoned / Clean dataset
     orig_train = CIFAR10(root=args.data_dir, train=True, download=True, transform=transform_train)
     clean_train, clean_val = poison.split_dataset(dataset=orig_train, val_frac=args.val_frac,
-                                                  perm=np.loadtxt('./data/cifar_shuffle.txt', dtype=int))
+                                                  perm=np.loadtxt('./dataset/cifar_shuffle.txt', dtype=int))
     clean_test = CIFAR10(root=args.data_dir, train=False, download=True, transform=transform_test)
 
     triggers = {'badnets': 'checkerboard_1corner',
@@ -154,7 +149,8 @@ def main():
     ## For clean Label attacks, provided implementation gives good ASR. Failure to obtain that may require adverarial perturbations 
     elif args.poison_type in ['SIG', 'TrojanNet', 'CLB']:
         trigger_type      = triggers[args.poison_type]
-        args.trigger_type = trigger_type        
+        args.trigger_type = trigger_type      
+        args.inject_portion = args.poison_rate  
 
         ## SIG and CLB are Clean-label Attacks 
         if args.poison_type in ['SIG', 'CLB']:

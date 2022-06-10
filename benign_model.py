@@ -7,14 +7,11 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
-from data_loader import * 
-from config import get_arguments
+from dataloader_cifar import * 
 import models
 import dataset.badnet_loader_cifar as poison
-from autoaugment import CIFAR10Policy, ImageNetPolicy
 from PIL import Image
-from data_loader import *
-
+import random
 
 parser = argparse.ArgumentParser(description='Train poisoned networks')
 
@@ -26,7 +23,7 @@ parser.add_argument('--batch-size', type=int, default=128, help='the batch size 
 parser.add_argument('--epoch',      type=int, default = 250, help='the numbe of epoch for training')
 parser.add_argument('--schedule',   type=int, nargs='+', default=[100, 150], help='Decrease learning rate at these epochs.')
 parser.add_argument('--save-every', type=int, default=20, help='save checkpoints every few epochs')
-parser.add_argument('--data-dir',   type=str, default='../data', help='dir to the dataset')
+parser.add_argument('--data-dir',   type=str, default='../dataset', help='dir to the dataset')
 parser.add_argument('--output-dir', type=str, default='logs/models/')
 
 ## Backdoor Parameters
@@ -43,7 +40,6 @@ parser.add_argument('--lr', type=float, default=0.1, help='initial learning rate
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=1e-4, help='weight decay')
 parser.add_argument('--num_class', type=int, default=10, help='number of classes')
-parser.add_argument('--isolation_ratio', type=float, default=0.01, help='ratio of isolation data')
 
 ## Others
 parser.add_argument('--seed', type=int, default=123, help='random seed')
@@ -88,10 +84,9 @@ def main():
         transforms.Normalize(MEAN_CIFAR10, STD_CIFAR10)
     ])
 
-    ## Step 1: Create poisoned / Clean dataset
-    orig_train = CIFAR10(root=args.data_dir, train=True, download=True, transform=transform_train)
-    clean_train, clean_val = poison.split_dataset(dataset=orig_train, val_frac=args.val_frac,
-                                                  perm=np.loadtxt('./data/cifar_shuffle.txt', dtype=int))
+    ## Step 1: Create dataloaders
+    clean_train = CIFAR10(root=args.data_dir, train=True, download=True, transform=transform_train)
+    train_loader = DataLoader(clean_train, batch_size=args.batch_size, num_workers=4)
     clean_test = CIFAR10(root=args.data_dir, train=False, download=True, transform=transform_test)
 
     clean_test_loader   = DataLoader(clean_test, batch_size=args.batch_size, num_workers=4)
@@ -102,19 +97,16 @@ def main():
     optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.schedule, gamma=0.1)
 
-    ## Step 3: Train Backdoored Models
     logger.info('Epoch \t lr \t Time \t TrainLoss \t TrainACC  \t CleanLoss \t CleanACC')
-    torch.save(net.state_dict(), os.path.join(args.output_dir, 'model_init.th'))
-    if trigger_info is not None:
-        torch.save(trigger_info, os.path.join(args.output_dir, 'trigger_info.th'))
 
-    ## Step 4: Train the Backdoor or Benign Models
+
+    ## Train  Benign Model
     best_clean_acc = 0
     for epoch in range(1, args.epoch):
         start = time.time()
         lr = optimizer.param_groups[0]['lr']
         train_loss, train_acc = train(model=net, criterion=criterion, optimizer=optimizer,
-                                      data_loader=poison_train_loader)
+                                      data_loader=train_loader)
         cl_test_loss, cl_test_acc = test(model=net, criterion=criterion, data_loader=clean_test_loader)
         scheduler.step()
         end = time.time()
@@ -123,7 +115,7 @@ def main():
             epoch, lr, end - start, train_loss, train_acc, cl_test_loss, cl_test_acc)
 
         ## Save after couple of epochs
-        elif cl_test_acc>=best_clean_acc:
+        if cl_test_acc>=best_clean_acc:
             best_clean_acc = cl_test_acc
             torch.save(net.state_dict(), os.path.join(args.output_dir, 'model_benign.th'))
 

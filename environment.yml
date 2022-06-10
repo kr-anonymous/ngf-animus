@@ -96,6 +96,7 @@ dependencies:
     - pyflakes==2.4.0
     - pygments==2.10.0
     - pytorchcv==0.0.67
+    - tensorboardX
     - pytz==2021.3
     - pywavelets==1.1.1
     - pyyaml==6.0
