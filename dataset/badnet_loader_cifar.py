@@ -79,7 +79,7 @@ def generate_trigger(trigger_type):
                     mask[center + h, 30 + w, 0] = 1
                     mask[center + h, 1 + w, 0] = 1
     elif trigger_type == 'gaussian_noise':
-        pattern = np.array(Image.open('./data/cifar_gaussian_noise.png'))
+        pattern = np.array(Image.open('./dataset/cifar_gaussian_noise.png'))
         mask = np.ones(shape=(32, 32, 1), dtype=np.uint8)
     else:
         raise ValueError(
