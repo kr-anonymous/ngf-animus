@@ -10,7 +10,7 @@ For creating a Benign model-
 	
 	python benign_model.py --output-dir defined/save/folder/ 
 
-For Creating a backdoor model-
+For Creating a backdoor model using blend attack with a poison ratio of 10%-
 	
 	python backdoor_model.py --poison-type blend --poison-rate 0.10 --output-dir defined/save/folder/ 
 
