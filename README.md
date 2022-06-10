@@ -12,7 +12,7 @@ For creating a Benign model-
 
 For Creating a backdoor model-
 	
-	python backdoor_model.py blend --poison-rate 0.10 --output-dir defined/save/folder/ 
+	python backdoor_model.py --poison-type blend --poison-rate 0.10 --output-dir defined/save/folder/ 
 
 
 # Purifying a Model
