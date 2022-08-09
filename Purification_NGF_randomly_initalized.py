@@ -54,7 +54,7 @@ parser.add_argument('--repeat_epochs', type=int, default=100, help='Print result
 parser.add_argument('--data-dir', type=str, default='../dataset', help='dir to the dataset')
 parser.add_argument('--val-frac', type=float, default=0.01, help='The fraction of the validate set')
 parser.add_argument('--output-dir', type=str, default='logs/models/')
-parser.add_argument('--gpuid', type=int, default=1, help='Gpu-Id')
+parser.add_argument('--gpuid', type=int, default=0, help='Gpu-Id')
 parser.add_argument('--inject_portion', type=float, default=0.1, help='ratio of backdoor samples')
 parser.add_argument('--target_label', type=int, default=0, help='class of target label')
 parser.add_argument('--trigger_type', type=str, default='squareTrigger', choices=['squareTrigger', 'gridTrigger', 'fourCornerTrigger', 'randomPixelTrigger',
