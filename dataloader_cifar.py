@@ -25,7 +25,7 @@ tf_test = transforms.Compose([
 def get_train_loader(opt):
     print('==> Preparing train data..')
     if (opt.dataset == 'CIFAR10'):
-        trainset = datasets.CIFAR10(root='../data', train=True, download=False)
+        trainset = datasets.CIFAR10(root='../data', train=True, download=True)
     else:
         raise Exception('Invalid dataset')
 
@@ -38,7 +38,7 @@ def get_test_loader(opt):
     print('==> Preparing test data..')
 
     if (opt.dataset == 'CIFAR10'):
-        testset = datasets.CIFAR10(root='../data', train=False, download=False)
+        testset = datasets.CIFAR10(root='../data', train=False, download=True)
     else:
         raise Exception('Invalid dataset')
 
@@ -63,7 +63,7 @@ def get_val_loader(opt, val_frac, perm=None):
     # tf_test = transforms.Compose([transforms.ToTensor()
     #                               ])
     if (opt.dataset == 'CIFAR10'):
-        trainset = datasets.CIFAR10(root='../data', train=True, download=False)
+        trainset = datasets.CIFAR10(root='../data', train=True, download=True)
     else:
         raise Exception('Invalid Dataset')
 
@@ -85,7 +85,7 @@ def get_backdoor_loader(opt):
     tf_train = tf_test
 
     if (opt.dataset == 'CIFAR10'):
-        trainset = datasets.CIFAR10(root='../data', train=True, download=False)
+        trainset = datasets.CIFAR10(root='../data', train=True, download=True)
     else:
         raise Exception('Invalid Dataset')
 
